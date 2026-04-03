@@ -4,6 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>EcoStats ⚡💧</title>
+
+  <!-- ── FAVICON & PWA ICONS ── -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBhMGEwZiIvPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMTkwIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMjQwLDI0MCwyNDUsMC4wNikiIHN0cm9rZS13aWR0aD0iNiIvPgogIDxwYXRoIGQ9Ik0yNTYgMTAwIEMyNTYgMTAwIDE2OCAyMTAgMTY4IDI1OCBhODggODggMCAwIDAgMTc2IDAgQzM0NCAyMTAgMjU2IDEwMCAyNTYgMTAweiIgZmlsbD0iIzM4YjJmMCIgb3BhY2l0eT0iMC45MiIvPgogIDxwYXRoIGQ9Ik0yNzIgMTkwIEwyNDQgMjYyIEwyNjQgMjYyIEwyMzIgMzM0IEwyOTggMjQ4IEwyNzggMjQ4IFoiIGZpbGw9IiNmMGMwNDAiLz4KICA8Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjE2OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzhiMmYwIiBzdHJva2Utd2lkdGg9IjIiIG9wYWNpdHk9IjAuMTIiLz4KPC9zdmc+">
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBhMGEwZiIvPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMTkwIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMjQwLDI0MCwyNDUsMC4wNikiIHN0cm9rZS13aWR0aD0iNiIvPgogIDxwYXRoIGQ9Ik0yNTYgMTAwIEMyNTYgMTAwIDE2OCAyMTAgMTY4IDI1OCBhODggODggMCAwIDAgMTc2IDAgQzM0NCAyMTAgMjU2IDEwMCAyNTYgMTAweiIgZmlsbD0iIzM4YjJmMCIgb3BhY2l0eT0iMC45MiIvPgogIDxwYXRoIGQ9Ik0yNzIgMTkwIEwyNDQgMjYyIEwyNjQgMjYyIEwyMzIgMzM0IEwyOTggMjQ4IEwyNzggMjQ4IFoiIGZpbGw9IiNmMGMwNDAiLz4KICA8Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjE2OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzhiMmYwIiBzdHJva2Utd2lkdGg9IjIiIG9wYWNpdHk9IjAuMTIiLz4KPC9zdmc+">
+  <meta name="theme-color" content="#0a0a0f">
+
+  <!-- ── PWA MANIFEST (inline) ── -->
+  <script>
+    const manifest = {
+      name: 'EcoStats',
+      short_name: 'EcoStats',
+      description: 'Suivi consommation électricité & eau — Dreux',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#0a0a0f',
+      theme_color: '#0a0a0f',
+      icons: [
+        { src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj4KICA8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBhMGEwZiIvPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMTkwIiBmaWxsPSJub25lIiBzdHJva2U9InJnYmEoMjQwLDI0MCwyNDUsMC4wNikiIHN0cm9rZS13aWR0aD0iNiIvPgogIDxwYXRoIGQ9Ik0yNTYgMTAwIEMyNTYgMTAwIDE2OCAyMTAgMTY4IDI1OCBhODggODggMCAwIDAgMTc2IDAgQzM0NCAyMTAgMjU2IDEwMCAyNTYgMTAweiIgZmlsbD0iIzM4YjJmMCIgb3BhY2l0eT0iMC45MiIvPgogIDxwYXRoIGQ9Ik0yNzIgMTkwIEwyNDQgMjYyIEwyNjQgMjYyIEwyMzIgMzM0IEwyOTggMjQ4IEwyNzggMjQ4IFoiIGZpbGw9IiNmMGMwNDAiLz4KICA8Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjE2OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzhiMmYwIiBzdHJva2Utd2lkdGg9IjIiIG9wYWNpdHk9IjAuMTIiLz4KPC9zdmc+', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = url;
+    document.currentScript.after(link);
+  </script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
