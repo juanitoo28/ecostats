@@ -410,7 +410,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:1.25rem;padding:1.1rem 1.25rem;">
         <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:0.6rem;">🔗 Récupérer via Google Drive</div>
         <div style="display:flex;gap:0.5rem;">
-          <input type="url" id="elecUrlInput" value="https://drive.google.com/uc?export=download&id=1OU9hrttfIWyXi8uX4X6_IsYpDW3PpCa8"
+          <input type="url" id="elecUrlInput" value="https://raw.githubusercontent.com/juanitoo28/ecostats/main/export_consommations_energie.csv"
             style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:0.7rem;padding:0.65rem 0.85rem;font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text);outline:none;transition:border-color .2s;"
             onfocus="this.style.borderColor='var(--elec)'" onblur="this.style.borderColor='var(--border)'"
             onkeydown="if(event.key==='Enter')fetchElecFromUrl()">
@@ -421,7 +421,7 @@
         </div>
         <div id="elecUrlError" style="font-size:0.65rem;color:var(--red);margin-top:0.4rem;display:none;"></div>
         <div style="font-size:0.6rem;color:var(--text-muted);margin-top:0.5rem;line-height:1.5;">
-          💡 Pour mettre à jour : remplace le fichier sur Drive (clic droit → "Gérer les versions") puis clique ↻ Sync
+          💡 Pour mettre à jour : remplace <code style="color:var(--elec);font-size:0.6rem;">export_consommations_energie.csv</code> dans le repo GitHub, puis clique ↻ Sync
         </div>
       </div>
 
@@ -767,35 +767,30 @@
   elecDrop.ondragleave = () => { elecDrop.style.borderColor = ''; };
   elecDrop.ondrop = e => { e.preventDefault(); elecDrop.style.borderColor = ''; handleElecCSV(e.dataTransfer.files[0]); };
 
-  // ── Import via URL ──
   async function fetchElecFromUrl() {
-    const url = document.getElementById('elecUrlInput').value.trim();
+    const rawUrl = document.getElementById('elecUrlInput').value.trim();
     const errEl = document.getElementById('elecUrlError');
     const btn = document.getElementById('elecUrlBtn');
     errEl.style.display = 'none';
 
-    if (!url) { errEl.textContent = 'Colle une URL valide'; errEl.style.display = 'block'; return; }
+    if (!rawUrl) { errEl.textContent = 'URL manquante'; errEl.style.display = 'block'; return; }
 
     btn.textContent = '⏳ Chargement...';
     btn.style.opacity = '0.6';
     btn.disabled = true;
 
     try {
-      // Utiliser un proxy CORS public pour contourner les restrictions
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const res = await fetch(proxyUrl);
-      if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
+      const res = await fetch(rawUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      if (!text || text.length < 10) throw new Error('Fichier vide ou inaccessible');
-
-      // Parser comme CSV texte
-      parseElecCSVText(text, url.split('/').pop() || 'gedia.csv');
-
+      if (!text || text.length < 20) throw new Error('Fichier vide');
+      if (text.includes('<!DOCTYPE') || text.includes('<html')) throw new Error('Fichier non accessible — vérifie que le repo est public');
+      parseElecCSVText(text, 'export_consommations_energie.csv');
     } catch (e) {
-      errEl.textContent = `Erreur : ${e.message}. Vérifie que le fichier est public.`;
+      errEl.textContent = `Erreur : ${e.message}`;
       errEl.style.display = 'block';
     } finally {
-      btn.textContent = 'Importer';
+      btn.textContent = '↻ Sync';
       btn.style.opacity = '1';
       btn.disabled = false;
     }
