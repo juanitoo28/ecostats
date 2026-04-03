@@ -408,20 +408,20 @@
 
       <!-- Option 2 : URL directe -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:1.25rem;padding:1.1rem 1.25rem;">
-        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:0.6rem;">🔗 Récupérer via URL (Google Drive, Dropbox...)</div>
+        <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:0.6rem;">🔗 Récupérer via Google Drive</div>
         <div style="display:flex;gap:0.5rem;">
-          <input type="url" id="elecUrlInput" placeholder="https://drive.google.com/uc?export=download&id=..."
+          <input type="url" id="elecUrlInput" value="https://drive.google.com/uc?export=download&id=1OU9hrttfIWyXi8uX4X6_IsYpDW3PpCa8"
             style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:0.7rem;padding:0.65rem 0.85rem;font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text);outline:none;transition:border-color .2s;"
             onfocus="this.style.borderColor='var(--elec)'" onblur="this.style.borderColor='var(--border)'"
             onkeydown="if(event.key==='Enter')fetchElecFromUrl()">
           <button onclick="fetchElecFromUrl()" id="elecUrlBtn"
             style="flex-shrink:0;background:var(--elec-dim);border:1px solid rgba(240,192,64,0.25);color:var(--elec);font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;padding:0 1rem;border-radius:0.7rem;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;">
-            Importer
+            ↻ Sync
           </button>
         </div>
         <div id="elecUrlError" style="font-size:0.65rem;color:var(--red);margin-top:0.4rem;display:none;"></div>
         <div style="font-size:0.6rem;color:var(--text-muted);margin-top:0.5rem;line-height:1.5;">
-          💡 Google Drive : fichier → Partager → "Toute personne avec le lien" → copier l'ID dans l'URL et remplacer par <code style="color:var(--elec);font-size:0.6rem;">drive.google.com/uc?export=download&id=TON_ID</code>
+          💡 Pour mettre à jour : remplace le fichier sur Drive (clic droit → "Gérer les versions") puis clique ↻ Sync
         </div>
       </div>
 
@@ -431,7 +431,6 @@
     <div id="elecSavedBadge" class="hidden" style="display:flex;align-items:center;gap:0.6rem;background:var(--elec-dim);border:1px solid rgba(240,192,64,0.2);border-radius:0.85rem;padding:0.6rem 0.9rem;margin-bottom:0.75rem;">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f0c040" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       <span id="elecSavedLabel" style="font-size:0.7rem;font-weight:700;color:var(--elec);flex:1;"></span>
-      <button onclick="forceGDriveSync()" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:var(--elec);font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">↻ Sync</button>
       <button onclick="clearElecCSV()" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Effacer</button>
     </div>
 
@@ -737,12 +736,8 @@
     const meta = JSON.parse(localStorage.getItem('ecostats_elec_meta') || '{}');
     const badge = document.getElementById('elecSavedBadge');
     const label = document.getElementById('elecSavedLabel');
-    const lastSync = localStorage.getItem(GDRIVE_CACHE_KEY);
-    const syncLabel = lastSync
-      ? `Synchro le ${new Date(parseInt(lastSync)).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}`
-      : (meta.name || 'CSV importé');
     if (elecData.length) {
-      label.textContent = `⚡ ${syncLabel} · ${elecData.length} jours`;
+      label.textContent = `⚡ ${meta.name || 'CSV importé'} · ${elecData.length} jours`;
       badge.classList.remove('hidden');
       badge.style.display = 'flex';
     }
@@ -1383,65 +1378,18 @@
     renderVisits();
   }
 
-  // ══ GOOGLE DRIVE AUTO-SYNC ══
-  const GDRIVE_FILE_ID = '1OU9hrttfIWyXi8uX4X6_IsYpDW3PpCa8';
-  const GDRIVE_URL = `https://corsproxy.io/?${encodeURIComponent('https://drive.google.com/uc?export=download&id=' + GDRIVE_FILE_ID)}`;
-  const GDRIVE_CACHE_KEY = 'ecostats_gdrive_lastSync';
-
-  async function syncFromGDrive(force = false) {
-    // Ne re-synchro que si +24h depuis la dernière sync, sauf si forcé
-    const lastSync = localStorage.getItem(GDRIVE_CACHE_KEY);
-    const hoursSince = lastSync ? (Date.now() - parseInt(lastSync)) / 3600000 : 999;
-    if (!force && hoursSince < 24 && elecData.length > 0) return;
-
-    const badge = document.getElementById('elecSavedBadge');
-    const label = document.getElementById('elecSavedLabel');
-    if (badge && label) {
-      badge.classList.remove('hidden');
-      badge.style.display = 'flex';
-      label.textContent = '⏳ Synchronisation Gedia en cours...';
-    }
-
-    try {
-      const res = await fetch(GDRIVE_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      if (!text || text.length < 20) throw new Error('Fichier vide');
-
-      parseElecCSVText(text, 'gedia-auto.csv');
-      localStorage.setItem(GDRIVE_CACHE_KEY, Date.now().toString());
-
-    } catch (e) {
-      console.warn('[GDrive sync] Erreur:', e.message);
-      // Pas bloquant — on utilise les données en cache si dispo
-      if (elecData.length > 0) {
-        document.getElementById('elecDropZone').classList.add('hidden');
-        showElecSavedBadge();
-        initElecFilter();
-        updateElec();
-      }
-    }
-  }
-
   // ══ INIT ══
-  window.onload = async () => {
+  window.onload = () => {
     document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
     updateWater();
     renderVisits();
-
-    // Toujours tenter la sync Google Drive
-    await syncFromGDrive();
-
-    // Si pas de données après sync → afficher la zone d'import
-    if (!elecData.length) {
-      document.getElementById('elecDropZone').classList.remove('hidden');
+    if (elecData.length > 0) {
+      document.getElementById('elecDropZone').classList.add('hidden');
+      showElecSavedBadge();
+      initElecFilter();
+      updateElec();
     }
   };
-
-  // Bouton "Sync maintenant" dans le badge
-  function forceGDriveSync() {
-    syncFromGDrive(true);
-  }
 </script>
 </body>
 </html>
