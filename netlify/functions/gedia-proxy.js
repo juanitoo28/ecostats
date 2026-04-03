@@ -1,42 +1,78 @@
 // netlify/functions/gedia-proxy.js
-// Authentification automatique Gedia avec refresh token
+// Flow OAuth Gedia : Form login → tokenUtilisateurInternet → API historique
 
-const GEDIA_AUTH_URL    = 'https://mon-compte-client.gedia-reseaux.com/application/auth/externe/authentification';
-const GEDIA_REFRESH_URL = 'https://mon-compte-client.gedia-reseaux.com/application/auth/externe/refresh';
-const GEDIA_API_URL     = 'https://mon-compte-client.gedia-reseaux.com/application/rest/interfaces/aelgrd/historiqueDeMesure/exporter';
-const GEDIA_PASC_ID     = 'JqSWF2hJXJTs.TMsQavMkC2MX24vVO3aWQJ66_Y1DEw==';
+const GEDIA_LOGIN_URL  = 'https://mon-compte-client.gedia-reseaux.com/application/auth/externe/authentification';
+const GEDIA_TOKEN_URL  = 'https://mon-compte-client.gedia-reseaux.com/application/auth/tokenUtilisateurInternet';
+const GEDIA_API_URL    = 'https://mon-compte-client.gedia-reseaux.com/application/rest/interfaces/aelgrd/historiqueDeMesure/exporter';
+const GEDIA_CLIENT_ID  = '4tcNbWM_v7wUN5L_r9rME0y';
+const GEDIA_PASC_ID    = 'JqSWF2hJXJTs.TMsQavMkC2MX24vVO3aWQJ66_Y1DEw==';
 
-async function login() {
+// Étape 1 : Login avec Form Data → récupère le cookie OAuth
+async function loginAndGetCookie() {
   const email    = process.env.GEDIA_EMAIL;
   const password = process.env.GEDIA_PASSWORD;
-  if (!email || !password) throw new Error('Variables GEDIA_EMAIL et GEDIA_PASSWORD manquantes');
+  if (!email || !password) throw new Error('Variables GEDIA_EMAIL / GEDIA_PASSWORD manquantes');
 
-  const res = await fetch(GEDIA_AUTH_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({ username: email, password }),
+  const formData = new URLSearchParams({
+    username:  email,
+    password:  password,
+    client_id: GEDIA_CLIENT_ID,
   });
 
-  if (!res.ok) throw new Error(`Login échoué (${res.status}): ${await res.text()}`);
-  const data = await res.json();
-  return data.access_token ?? data.token ?? null;
+  const res = await fetch(GEDIA_LOGIN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Accept': 'application/json, text/plain, */*',
+      'Origin': 'https://mon-compte-client.gedia-reseaux.com',
+      'Referer': 'https://mon-compte-client.gedia-reseaux.com/',
+    },
+    body: formData.toString(),
+    redirect: 'manual', // ne pas suivre les redirects automatiquement
+  });
+
+  console.log(`[login] status=${res.status}`);
+
+  // Récupérer le cookie cookieOauth depuis la réponse
+  const setCookie = res.headers.get('set-cookie');
+  console.log(`[login] set-cookie=${setCookie}`);
+
+  // Extraire la valeur du cookie cookieOauth
+  let cookieOauth = null;
+  if (setCookie) {
+    const match = setCookie.match(/cookieOauth=([^;]+)/);
+    if (match) cookieOauth = match[1];
+  }
+
+  // Si redirect, suivre manuellement
+  const location = res.headers.get('location');
+  console.log(`[login] location=${location}`);
+
+  return { cookieOauth, location, status: res.status };
 }
 
-async function refreshToken() {
-  const token = process.env.GEDIA_REFRESH_TOKEN;
-  if (!token) return null;
-  try {
-    const res = await fetch(GEDIA_REFRESH_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ refresh_token: token }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.access_token ?? data.token ?? null;
-  } catch { return null; }
+// Étape 2 : Obtenir le JWT via tokenUtilisateurInternet avec le cookie
+async function getJWT(cookieOauth) {
+  const res = await fetch(GEDIA_TOKEN_URL, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Origin': 'https://mon-compte-client.gedia-reseaux.com',
+      'Referer': 'https://mon-compte-client.gedia-reseaux.com/',
+      'Cookie': `cookieOauth=${cookieOauth}`,
+    },
+  });
+
+  console.log(`[token] status=${res.status}`);
+  const text = await res.text();
+  console.log(`[token] body=${text.slice(0, 300)}`);
+
+  if (!res.ok) return null;
+  const data = JSON.parse(text);
+  return data.access_token ?? data.token ?? data.authorization ?? null;
 }
 
+// Étape 3 : Appeler l'API historique
 async function fetchConsommations(jwt) {
   const now = new Date();
   const oneYearAgo = new Date(now);
@@ -48,6 +84,8 @@ async function fetchConsommations(jwt) {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       'Authorization': `Bearer ${jwt}`,
+      'Origin': 'https://mon-compte-client.gedia-reseaux.com',
+      'Referer': 'https://mon-compte-client.gedia-reseaux.com/',
     },
     body: JSON.stringify({
       typeObjet: 'DonneesHistoriqueMesureRepresentation',
@@ -64,9 +102,12 @@ async function fetchConsommations(jwt) {
     }),
   });
 
-  return { status: res.status, body: await res.text() };
+  const body = await res.text();
+  console.log(`[api] status=${res.status} body=${body.slice(0, 300)}`);
+  return { status: res.status, body };
 }
 
+// Étape 4 : Normaliser
 function normalizeData(raw) {
   let data;
   try { data = JSON.parse(raw); } catch { return { error: 'parse_error', raw }; }
@@ -100,6 +141,7 @@ function normalizeData(raw) {
   };
 }
 
+// Handler principal
 export const handler = async () => {
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -108,25 +150,52 @@ export const handler = async () => {
   };
 
   try {
-    let jwt = await refreshToken();
-    if (!jwt) jwt = await login();
-    if (!jwt) return { statusCode: 401, headers, body: JSON.stringify({ error: 'auth_failed' }) };
+    // 1. Login → cookie
+    const { cookieOauth, status: loginStatus } = await loginAndGetCookie();
 
-    let result = await fetchConsommations(jwt);
-
-    if (result.status === 401) {
-      jwt = await login();
-      if (!jwt) return { statusCode: 401, headers, body: JSON.stringify({ error: 'relogin_failed' }) };
-      result = await fetchConsommations(jwt);
+    if (!cookieOauth) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          error: 'login_failed',
+          message: `Login échoué (status ${loginStatus}). Vérifier GEDIA_EMAIL et GEDIA_PASSWORD dans les env vars Netlify.`,
+        }),
+      };
     }
 
+    // 2. Cookie → JWT
+    const jwt = await getJWT(cookieOauth);
+    if (!jwt) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'token_failed', message: 'Impossible d\'obtenir le JWT depuis tokenUtilisateurInternet' }),
+      };
+    }
+
+    // 3. JWT → données historique
+    const result = await fetchConsommations(jwt);
     if (result.status !== 200) {
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'api_error', httpCode: result.status, detail: result.body }) };
+      return {
+        statusCode: 502,
+        headers,
+        body: JSON.stringify({ error: 'api_error', httpCode: result.status, detail: result.body.slice(0, 500) }),
+      };
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify(normalizeData(result.body), null, 2) };
+    // 4. Normaliser et retourner
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(normalizeData(result.body), null, 2),
+    };
 
   } catch (e) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'internal_error', message: e.message }) };
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'internal_error', message: e.message }),
+    };
   }
 };
