@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EcoStats ⚡💧</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: rgba(255,255,255,0.07);
+      --border-hover: rgba(255,255,255,0.15);
+      --elec: #f0c040;
+      --elec-dim: rgba(240,192,64,0.12);
+      --elec-glow: rgba(240,192,64,0.25);
+      --water: #38b2f0;
+      --water-dim: rgba(56,178,240,0.12);
+      --water-glow: rgba(56,178,240,0.25);
+      --text: #f0f0f5;
+      --text-muted: rgba(240,240,245,0.35);
+      --text-mid: rgba(240,240,245,0.6);
+      --green: #4ade80;
+      --red: #f87171;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 2rem 1.25rem 1rem;
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .logo { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; }
+    .logo .e { color: var(--elec); }
+    .logo .w { color: var(--water); }
+    .subtitle { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 2px; }
+
+    .btn-reset {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.2);
+      color: var(--red);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.45rem 0.9rem;
+      border-radius: 0.6rem;
+      cursor: pointer;
+      transition: all .2s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .btn-reset:hover { background: rgba(248,113,113,0.2); }
+
+    /* ── TABS ── */
+    .tabs-wrap {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 1.25rem 1.25rem;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 4px;
+      gap: 4px;
+    }
+    .tab {
+      padding: 0.7rem 1rem;
+      border-radius: 0.7rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: center;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .tab.active-elec { background: var(--elec-dim); color: var(--elec); border: 1px solid rgba(240,192,64,0.25); }
+    .tab.active-water { background: var(--water-dim); color: var(--water); border: 1px solid rgba(56,178,240,0.25); }
+    .tab svg { display: inline-block; vertical-align: middle; margin-right: 5px; }
+
+    /* ── MAIN ── */
+    .main { max-width: 480px; margin: 0 auto; padding: 0 1.25rem; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.25rem;
+      margin-bottom: 0.75rem;
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: var(--border-hover); }
+
+    .card-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    /* ── PRICE CONFIG ── */
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+    .field {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 0.85rem;
+      padding: 0.9rem 1rem;
+      transition: border-color .2s;
+    }
+    .field:focus-within { border-color: var(--border-hover); }
+    .field label { display: block; font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 0.3rem; }
+    .field input, .field select {
+      font-family: 'DM Mono', monospace;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text);
+      background: transparent;
+      border: none;
+      outline: none;
+      width: 100%;
+    }
+    .field input.elec-val { color: var(--elec); }
+    .field input.water-val { color: var(--water); }
+
+    /* ── STATS GRID ── */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 1.1rem 1.2rem;
+    }
+    .stat-card.span2 { grid-column: span 2; }
+    .stat-card .s-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .stat-card .s-val { font-family: 'DM Mono', monospace; font-size: 2rem; font-weight: 500; line-height: 1; }
+    .stat-card .s-unit { font-size: 0.72rem; font-weight: 700; opacity: 0.5; margin-left: 2px; }
+    .stat-card .s-sub { font-size: 0.65rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+    .elec-accent { color: var(--elec); }
+    .water-accent { color: var(--water); }
+
+    /* ── CHART ── */
+    .chart-wrap { height: 200px; position: relative; }
+
+    /* ── FILTER BAR ── */
+    .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; overflow-x: auto; padding-bottom: 2px; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-chip {
+      flex-shrink: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 0.6rem;
+      padding: 0.35rem 0.8rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .filter-chip.active-elec { background: var(--elec-dim); color: var(--elec); border-color: rgba(240,192,64,0.3); }
+    .filter-chip.active-water { background: var(--water-dim); color: var(--water); border-color: rgba(56,178,240,0.3); }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    .table-wrap::-webkit-scrollbar { display: none; }
+    table { width: 100%; border-collapse: collapse; }
+    td {
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td { border-bottom: none; }
+    .td-date { font-family: 'DM Mono', monospace; color: var(--text-muted); font-size: 0.72rem; }
+    .td-val { font-family: 'DM Mono', monospace; font-weight: 500; }
+    .td-cost { font-family: 'DM Mono', monospace; font-weight: 500; text-align: right; }
+
+    /* ── DROP ZONE ── */
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 1.5rem;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      margin-bottom: 0.75rem;
+    }
+    .dropzone:hover { border-color: var(--border-hover); }
+    .dz-icon {
+      width: 52px; height: 52px;
+      border-radius: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .dz-icon.elec { background: var(--elec-dim); box-shadow: 0 8px 24px var(--elec-glow); }
+    .dz-icon.water { background: var(--water-dim); box-shadow: 0 8px 24px var(--water-glow); }
+    .dz-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .dz-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* ── SUMMARY BADGE ── */
+    .bill-badge {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .bill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .bill-info { flex: 1; }
+    .bill-title { font-size: 0.72rem; font-weight: 700; }
+    .bill-meta { font-size: 0.62rem; color: var(--text-muted); margin-top: 1px; }
+    .bill-amount { font-family: 'DM Mono', monospace; font-size: 0.95rem; font-weight: 500; }
+
+    /* ── PRINT / PDF ── */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { background: white !important; color: #111 !important; font-family: 'Syne', sans-serif; }
+      .header, .tabs-wrap, .panel:not(#panelWater), #panelWater > .bill-badge,
+      #panelWater > .card:not(#pdfTargetCard), .btn-reset { display: none !important; }
+      #panelWater { display: block !important; }
+      #pdfTargetCard { display: block !important; box-shadow: none !important; border: none !important; }
+      .pdf-doc { display: block !important; }
+      body > * > * { max-width: 100% !important; }
+    }
+
+    /* ── PDF DOCUMENT (caché hors print) ── */
+    .pdf-doc { display: none; }
+    @media print { .pdf-doc { display: block !important; } }
+    .hidden { display: none !important; }
+
+    /* ── SECTION PANEL ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── ACCORDÉON ── */
+    .accordion { background: var(--surface); border: 1px solid var(--border); border-radius: 1.25rem; margin-bottom: 0.75rem; overflow: hidden; transition: border-color .2s; }
+    .accordion:hover { border-color: var(--border-hover); }
+    .accordion-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; cursor: pointer; user-select: none;
+      gap: 0.75rem;
+    }
+    .accordion-header:active { opacity: 0.8; }
+    .accordion-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; }
+    .accordion-title span { font-size: 0.85rem; }
+    .accordion-summary { font-family: 'DM Mono', monospace; font-size: 0.8rem; font-weight: 500; color: var(--text-mid); flex:1; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .accordion-chevron { flex-shrink:0; width:18px; height:18px; color: var(--text-muted); transition: transform .25s ease; }
+    .accordion-chevron.open { transform: rotate(180deg); }
+    .accordion-body { overflow: hidden; max-height: 0; transition: max-height .3s ease, padding .3s ease; padding: 0 1.25rem; }
+    .accordion-body.open { max-height: 4000px; padding: 0 1.25rem 1.25rem; }
+
+    /* ── LOGIN ── */
+    #loginScreen {
+      position: fixed; inset: 0; z-index: 99999;
+      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem;
+    }
+    #loginScreen .login-logo { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.25rem; }
+    #loginScreen .login-sub { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 2.5rem; }
+    #loginScreen .login-box {
+      width: 100%; max-width: 340px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 2rem;
+    }
+    #loginScreen label { display: block; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 0.5rem; }
+    #loginScreen input[type="password"] {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 0.9rem 1rem;
+      font-family: 'DM Mono', monospace; font-size: 1.1rem; color: var(--text);
+      outline: none; transition: border-color .2s; margin-bottom: 1rem; letter-spacing: 0.15em;
+    }
+    #loginScreen input[type="password"]:focus { border-color: var(--water); }
+    #loginScreen input[type="password"].error { border-color: var(--red); animation: shake .3s ease; }
+    #loginScreen .login-btn {
+      width: 100%; padding: 0.9rem; border: none; border-radius: 0.85rem;
+      background: var(--water); color: #0a0a0f;
+      font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 800;
+      cursor: pointer; transition: opacity .2s; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    #loginScreen .login-btn:hover { opacity: 0.85; }
+    #loginScreen .login-error { font-size: 0.72rem; color: var(--red); text-align: center; margin-top: 0.75rem; min-height: 1rem; }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="loginScreen">
+  <div class="login-logo">Eco<span style="color:var(--elec)">⚡</span><span style="color:var(--water)">💧</span>Stats</div>
+  <div class="login-sub">Accès sécurisé · Dreux</div>
+  <div class="login-box">
+    <label>Mot de passe</label>
+    <input type="password" id="loginInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkLogin()">
+    <button class="login-btn" onclick="checkLogin()">Accéder</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appContent" style="display:none;">
+<div class="header">
+  <div>
+    <div class="logo">Eco<span class="e">⚡</span><span class="w">💧</span>Stats</div>
+    <div class="subtitle">Suivi conso · Dreux</div>
+  </div>
+  <button id="resetBtn" class="btn-reset hidden">Réinitialiser</button>
+</div>
+
+<!-- TABS -->
+<div class="tabs-wrap">
+  <div class="tabs">
+    <button class="tab active-elec" id="tabElec" onclick="switchTab('elec')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Électricité
+    </button>
+    <button class="tab" id="tabWater" onclick="switchTab('water')">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6 10 4 14 4 17a8 8 0 0016 0c0-3-2-7-8-15z"/></svg>
+      Eau
+    </button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ══════════════ ELEC PANEL ══════════════ -->
+  <div class="panel active" id="panelElec">
+
+    <!-- Résumé facture -->
+    <div class="bill-badge">
+      <div class="bill-dot" style="background:var(--elec)"></div>
+      <div class="bill-info">
+        <div class="bill-title">Facture Gedia · n° 2243424G</div>
+        <div class="bill-meta">15/11/2025 → 15/02/2026 · 4 302 kWh · Tarif bleu 6 kVA</div>
+      </div>
+      <div class="bill-amount elec-accent">886,09 €</div>
+    </div>
+
+    <!-- Config prix (toujours visible) -->
+    <div class="card">
+      <div class="card-label">⚙️ Paramètres</div>
+      <div class="config-grid">
+        <div class="field">
+          <label>Prix / kWh (€)</label>
+          <input type="number" id="elecPrice" value="0.2059" step="0.0001" class="elec-val">
+        </div>
+        <div class="field" id="elecFilterWrapper">
+          <label>Période</label>
+          <select id="elecMonthFilter">
+            <option value="all">Global</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop zone CSV -->
+    <div class="dropzone" id="elecDropZone">
+      <div class="dz-icon elec">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f0c040" stroke-width="2" stroke-linecap="round"><path d="M12 4v16m8-8H4"/></svg>
+      </div>
+      <div class="dz-title">Importer CSV électricité</div>
+      <div class="dz-sub">Cliquez ou glissez le fichier Enedis/Gedia</div>
+      <input type="file" id="elecFileInput" accept=".csv" class="hidden">
+    </div>
+
+    <!-- Badge CSV sauvegardé -->
+    <div id="elecSavedBadge" class="hidden" style="display:flex;align-items:center;gap:0.6rem;background:var(--elec-dim);border:1px solid rgba(240,192,64,0.2);border-radius:0.85rem;padding:0.6rem 0.9rem;margin-bottom:0.75rem;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f0c040" stroke-width="2.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span id="elecSavedLabel" style="font-size:0.7rem;font-weight:700;color:var(--elec);flex:1;"></span>
+      <button onclick="clearElecCSV()" style="background:none;border:none;cursor:pointer;font-size:0.65rem;color:var(--text-muted);font-family:'Syne',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Effacer</button>
+    </div>
+
+    <!-- Dashboard électricité -->
+    <div id="elecDashboard" class="hidden">
+
+      <!-- ACCORDÉON : Statistiques -->
+      <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion('acc-elec-stats',this)">
+          <div class="accordion-title"><span>⚡</span> Statistiques</div>
+          <div class="accordion-summary" id="acc-elec-stats-summary">—</div>
+          <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </div>
+        <div class="accordion-body" id="acc-elec-stats">
+          <div class="stats-grid" style="margin-bottom:0.75rem;">
+            <div class="stat-card span2">
+              <div class="s-label">Coût total période</div>
+              <div><span class="s-val elec-accent" id="elecTotalCost">0.00</span><span class="s-unit elec-accent">€</span></div>
+              <div class="s-sub" id="elecPeriodInfo"></div>
+            </div>
+            <div class="stat-card"><div class="s-label">Volume</div><div><span class="s-val" id="elecTotalKwh">0</span><span class="s-unit">kWh</span></div></div>
+            <div class="stat-card"><div class="s-label">Moy. / jour</div><div><span class="s-val elec-accent" id="elecAvgDay">0.00</span><span class="s-unit elec-accent">€/j</span></div></div>
+            <div class="stat-card"><div class="s-label">Moy. kWh/j</div><div><span class="s-val" id="elecAvgKwh">0.0</span><span class="s-unit">kWh</span></div></div>
+            <div class="stat-card"><div class="s-label">Coût / kWh réel</div><div><span class="s-val elec-accent" id="elecRealRate">-</span><span class="s-unit elec-accent">€</span></div></div>
+          </div>
+          <div style="background:var(--surface2);border-radius:0.85rem;padding:0.75rem;">
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:0.5rem;">Consommation kWh</div>
+            <div class="chart-wrap"><canvas id="elecChart"></canvas></div>
+          </div>
+          <div id="elecFilterBar" class="filter-bar" style="margin-top:0.5rem;"></div>
+        </div>
+      </div>
+
+      <!-- ACCORDÉON : Historique -->
+      <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion('acc-elec-history',this)">
+          <div class="accordion-title"><span>📋</span> Historique journalier</div>
+          <div class="accordion-summary" id="acc-elec-history-summary">—</div>
+          <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </div>
+        <div class="accordion-body" id="acc-elec-history" style="padding:0;">
+          <div class="table-wrap" style="padding-bottom:0.5rem;">
+            <table><tbody id="elecTableBody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACCORDÉON : Facture de référence -->
+      <div class="accordion">
+        <div class="accordion-header" onclick="toggleAccordion('acc-elec-bill',this)">
+          <div class="accordion-title"><span>📄</span> Facture de référence · Gedia</div>
+          <div class="accordion-summary">886,09 € · 2243424G</div>
+          <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </div>
+        <div class="accordion-body" id="acc-elec-bill">
+          <p style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">Base du calcul : 886,09 € TTC ÷ 4 302 kWh = <strong style="color:var(--elec)">0,2059 €/kWh</strong></p>
+          <table style="width:100%; font-size:0.75rem; border-collapse:collapse;">
+            <tbody>
+              <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Période</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">15/11/2025 → 15/02/2026</td></tr>
+              <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Abonnement (6 kVA · 3 mois)</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">35,40 €</td></tr>
+              <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Conso 3 683 kWh @ 0,1327 €</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">488,73 €</td></tr>
+              <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Conso 619 kWh @ 0,1308 €</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">80,97 €</td></tr>
+              <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Total HT</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">605,10 €</td></tr>
+              <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Accise + CTA + TVA</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">280,99 €</td></tr>
+              <tr><td style="padding:0.6rem 0; font-weight:700; color:var(--elec);">Total TTC</td><td style="padding:0.6rem 0; text-align:right; font-family:'DM Mono',monospace; font-weight:700; color:var(--elec);">886,09 €</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ WATER PANEL ══════════════ -->
+  <div class="panel" id="panelWater">
+
+    <!-- Résumé facture -->
+    <div class="bill-badge">
+      <div class="bill-dot" style="background:var(--water)"></div>
+      <div class="bill-info">
+        <div class="bill-title">Facture OCYCLAD · n° 11755OC</div>
+        <div class="bill-meta">10/07/2025 → 11/03/2026 · 60 m³ · Eau + Assainissement</div>
+      </div>
+      <div class="bill-amount water-accent">445,72 €</div>
+    </div>
+
+    <!-- Paramètres toujours visibles -->
+    <div class="card">
+      <div class="card-label">⚙️ Ma facture</div>
+      <div class="config-grid">
+        <div class="field">
+          <label>Total payé TTC (€)</label>
+          <input type="number" id="waterTotalBill" value="445.72" step="0.01" class="water-val" oninput="updateWater()">
+        </div>
+        <div class="field">
+          <label>Consommation (m³)</label>
+          <input type="number" id="waterM3Input" value="60" step="1" oninput="updateWater()">
+        </div>
+        <div class="field">
+          <label>Période (jours)</label>
+          <input type="number" id="waterDaysInput" value="244" step="1" oninput="updateWater()">
+        </div>
+        <div class="field" style="display:flex;flex-direction:column;justify-content:center;gap:2px;">
+          <label>Coût réel / m³</label>
+          <div style="font-family:'DM Mono',monospace;font-size:1.05rem;font-weight:500;color:var(--water)" id="waterM3RateDisplay">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCORDÉON : Analyse -->
+    <div class="accordion">
+      <div class="accordion-header" onclick="toggleAccordion('acc-water-stats',this)">
+        <div class="accordion-title"><span>💧</span> Analyse</div>
+        <div class="accordion-summary" id="acc-water-stats-summary">—</div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </div>
+      <div class="accordion-body" id="acc-water-stats">
+        <div class="stats-grid">
+          <div class="stat-card span2">
+            <div class="s-label">Total payé TTC</div>
+            <div><span class="s-val water-accent" id="waterTotalCost">0.00</span><span class="s-unit water-accent">€</span></div>
+            <div class="s-sub" id="waterPeriodInfo"></div>
+          </div>
+          <div class="stat-card"><div class="s-label">Coût / m³ réel</div><div><span class="s-val water-accent" id="waterRealM3">0.00</span><span class="s-unit water-accent">€</span></div></div>
+          <div class="stat-card"><div class="s-label">Coût / jour</div><div><span class="s-val water-accent" id="waterCostDay">0.00</span><span class="s-unit water-accent">€/j</span></div></div>
+          <div class="stat-card"><div class="s-label">Conso / jour</div><div><span class="s-val" id="waterM3Day">0.0</span><span class="s-unit">m³</span></div></div>
+          <div class="stat-card"><div class="s-label">Conso / mois</div><div><span class="s-val" id="waterM3Month">0.0</span><span class="s-unit">m³</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCORDÉON : Passages à Dreux -->
+    <div class="accordion">
+      <div class="accordion-header" onclick="toggleAccordion('acc-visits',this)">
+        <div class="accordion-title"><span>🏠</span> Mes passages à Dreux</div>
+        <div class="accordion-summary" id="acc-visits-summary">Aucun passage</div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </div>
+      <div class="accordion-body" id="acc-visits">
+
+        <!-- Saisie -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-bottom:0.6rem;">
+          <div class="field" style="grid-column:span 2;">
+            <label>Nom · Prénom du visiteur</label>
+            <input type="text" id="visitName" placeholder="ex: Jean Tiago" style="font-size:0.85rem;color:var(--text);background:transparent;border:none;outline:none;width:100%;font-weight:600;">
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="visitDate" style="font-family:'DM Mono',monospace;font-size:0.85rem;color:var(--text);background:transparent;border:none;outline:none;width:100%;">
+          </div>
+          <div class="field">
+            <label>m³ utilisés</label>
+            <input type="number" id="visitM3" value="" placeholder="ex: 2.5" step="0.1" min="0" style="font-family:'DM Mono',monospace;font-size:0.9rem;color:var(--water);background:transparent;border:none;outline:none;width:100%;">
+          </div>
+        </div>
+
+        <!-- Photos compteur -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin-bottom:0.6rem;">
+          <div>
+            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:0.4rem;">📷 Compteur — Arrivée</div>
+            <label id="photoBefore_label" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.35rem;background:var(--surface2);border:1px dashed var(--border);border-radius:0.85rem;padding:0.85rem;cursor:pointer;transition:all .2s;min-height:90px;" onmouseover="this.style.borderColor='var(--water)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div id="photoBefore_preview" style="width:100%;display:none;"><img id="photoBefore_img" style="width:100%;border-radius:0.5rem;max-height:120px;object-fit:cover;" src=""></div>
+              <div id="photoBefore_placeholder" style="text-align:center;"><div style="font-size:1.3rem;">📷</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Photo ou galerie</div></div>
+              <div id="photoBefore_meta" style="font-size:0.6rem;color:var(--water);font-family:'DM Mono',monospace;display:none;"></div>
+              <input type="file" id="photoBefore" accept="image/*" style="display:none;" onchange="handlePhoto(this,'before')">
+            </label>
+          </div>
+          <div>
+            <div style="font-size:0.58rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:0.4rem;">📷 Compteur — Départ</div>
+            <label id="photoAfter_label" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.35rem;background:var(--surface2);border:1px dashed var(--border);border-radius:0.85rem;padding:0.85rem;cursor:pointer;transition:all .2s;min-height:90px;" onmouseover="this.style.borderColor='var(--water)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div id="photoAfter_preview" style="width:100%;display:none;"><img id="photoAfter_img" style="width:100%;border-radius:0.5rem;max-height:120px;object-fit:cover;" src=""></div>
+              <div id="photoAfter_placeholder" style="text-align:center;"><div style="font-size:1.3rem;">📷</div><div style="font-size:0.65rem;color:var(--text-muted);margin-top:2px;">Photo ou galerie</div></div>
+              <div id="photoAfter_meta" style="font-size:0.6rem;color:var(--water);font-family:'DM Mono',monospace;display:none;"></div>
+              <input type="file" id="photoAfter" accept="image/*" style="display:none;" onchange="handlePhoto(this,'after')">
+            </label>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+          <div class="field" style="flex:1;">
+            <label>Note (optionnel)</label>
+            <input type="text" id="visitNote" placeholder="Weekend, vacances…" style="font-size:0.82rem;color:var(--text-mid);background:transparent;border:none;outline:none;width:100%;">
+          </div>
+          <button onclick="addVisit()" style="flex-shrink:0;background:var(--water-dim);border:1px solid rgba(56,178,240,0.25);color:var(--water);font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;padding:0 1.1rem;border-radius:0.75rem;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:0.04em;">+ Ajouter</button>
+        </div>
+
+        <!-- Total dû -->
+        <div style="background:var(--surface2);border:1px solid rgba(56,178,240,0.2);border-radius:1rem;padding:1rem 1.1rem;margin-bottom:0.75rem;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:0.25rem;">Total à rembourser à Papa</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);" id="visitSummaryDetail">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'DM Mono',monospace;font-size:1.8rem;font-weight:500;color:var(--water);line-height:1;" id="visitTotalDue">0,00</div>
+            <div style="font-size:0.65rem;color:var(--water);opacity:0.6;margin-top:2px;">€</div>
+          </div>
+        </div>
+
+        <!-- Liste des passages -->
+        <div id="visitList" style="display:flex;flex-direction:column;gap:0.4rem;"></div>
+
+        <!-- Export PDF -->
+        <div id="exportPdfWrap" class="hidden" style="margin-top:1rem;">
+          <button onclick="exportPDF()" style="width:100%;background:linear-gradient(135deg,rgba(56,178,240,0.15),rgba(56,178,240,0.08));border:1px solid rgba(56,178,240,0.3);color:var(--water);font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;padding:0.85rem;border-radius:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:0.5rem;letter-spacing:0.04em;text-transform:uppercase;transition:all .2s;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            Exporter en PDF — Note de remboursement
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCORDÉON : Facture OCYCLAD -->
+    <div class="accordion">
+      <div class="accordion-header" onclick="toggleAccordion('acc-water-bill',this)">
+        <div class="accordion-title"><span>📄</span> Facture de référence · OCYCLAD</div>
+        <div class="accordion-summary">445,72 € · 11755OC</div>
+        <svg class="accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </div>
+      <div class="accordion-body" id="acc-water-bill">
+        <p style="font-size:0.7rem;color:var(--text-muted);margin-bottom:0.75rem;line-height:1.5;">Base : 445,72 € TTC ÷ 60 m³ = <strong style="color:var(--water)">7,43 €/m³</strong></p>
+        <table style="width:100%; font-size:0.75rem; border-collapse:collapse;">
+          <tbody>
+            <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Période</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">10/07/2025 → 11/03/2026</td></tr>
+            <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Part fixe eau</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">79,06 €</td></tr>
+            <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Consommation eau · 60 m³</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">145,54 €</td></tr>
+            <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Assainissement · 60 m³</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">154,54 €</td></tr>
+            <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Redevances</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">36,69 €</td></tr>
+            <tr><td style="padding:0.5rem 0; color:var(--text-muted); border-bottom:1px solid var(--border);">Total HT + TVA</td><td style="padding:0.5rem 0; text-align:right; font-family:'DM Mono',monospace; border-bottom:1px solid var(--border);">415,83 € + 29,89 €</td></tr>
+            <tr><td style="padding:0.6rem 0; font-weight:700; color:var(--water);">Total TTC</td><td style="padding:0.6rem 0; text-align:right; font-family:'DM Mono',monospace; font-weight:700; color:var(--water);">445,72 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /panelWater -->
+
+</div><!-- /main -->
+</div><!-- /appContent -->
+
+<script>
+  // ══ LOGIN ══
+  const PASSWORD = 'dreux2026';
+
+  function checkLogin() {
+    const val = document.getElementById('loginInput').value;
+    const err = document.getElementById('loginError');
+    const input = document.getElementById('loginInput');
+    if (val === PASSWORD) {
+      sessionStorage.setItem('ecostats_auth', '1');
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appContent').style.display = 'block';
+    } else {
+      err.textContent = 'Mot de passe incorrect';
+      input.value = '';
+      input.classList.add('error');
+      setTimeout(() => { input.classList.remove('error'); err.textContent = ''; }, 1000);
+    }
+  }
+
+  // Auto-login si session active (même onglet)
+  if (sessionStorage.getItem('ecostats_auth') === '1') {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+  }
+
+  // ══ STATE ══
+  let elecData = JSON.parse(localStorage.getItem('ecostats_elec')) || [];
+  let elecChart = null;
+  let activeTab = 'elec';
+
+  // ══ ACCORDÉON ══
+  function toggleAccordion(id, header) {
+    const body = document.getElementById(id);
+    const chevron = header.querySelector('.accordion-chevron');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    chevron.classList.toggle('open', !isOpen);
+  }
+
+  // ══ TABS ══
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('panelElec').classList.toggle('active', tab === 'elec');
+    document.getElementById('panelWater').classList.toggle('active', tab === 'water');
+    document.getElementById('tabElec').className = 'tab' + (tab === 'elec' ? ' active-elec' : '');
+    document.getElementById('tabWater').className = 'tab' + (tab === 'water' ? ' active-water' : '');
+  }
+
+  function clearElecCSV() {
+    localStorage.removeItem('ecostats_elec');
+    localStorage.removeItem('ecostats_elec_meta');
+    elecData = [];
+    document.getElementById('elecDashboard').classList.add('hidden');
+    document.getElementById('elecDropZone').classList.remove('hidden');
+    document.getElementById('elecSavedBadge').classList.add('hidden');
+    document.getElementById('resetBtn').classList.add('hidden');
+  }
+
+  function showElecSavedBadge() {
+    const meta = JSON.parse(localStorage.getItem('ecostats_elec_meta') || '{}');
+    const badge = document.getElementById('elecSavedBadge');
+    const label = document.getElementById('elecSavedLabel');
+    if (meta.name && elecData.length) {
+      label.textContent = `CSV sauvegardé · ${meta.name} · ${elecData.length} jours`;
+      badge.classList.remove('hidden');
+      badge.style.display = 'flex';
+    }
+  }
+
+  // ══ RESET ══
+  document.getElementById('resetBtn').onclick = () => {
+    if (confirm('Effacer les données CSV importées ?')) {
+      localStorage.removeItem('ecostats_elec');
+      location.reload();
+    }
+  };
+
+  // ══ ELEC ══
+  const elecDrop = document.getElementById('elecDropZone');
+  const elecFile = document.getElementById('elecFileInput');
+  const elecMonthFilter = document.getElementById('elecMonthFilter');
+  const elecPriceInput = document.getElementById('elecPrice');
+
+  elecDrop.onclick = () => elecFile.click();
+  elecFile.onchange = e => handleElecCSV(e.target.files[0]);
+  elecMonthFilter.onchange = () => updateElec();
+  elecPriceInput.oninput = () => updateElec();
+
+  // Drag & drop
+  elecDrop.ondragover = e => { e.preventDefault(); elecDrop.style.borderColor = 'var(--elec)'; };
+  elecDrop.ondragleave = () => { elecDrop.style.borderColor = ''; };
+  elecDrop.ondrop = e => { e.preventDefault(); elecDrop.style.borderColor = ''; handleElecCSV(e.dataTransfer.files[0]); };
+
+  function handleElecCSV(file) {
+    if (!file) return;
+    Papa.parse(file, {
+      delimiter: ';',
+      skipEmptyLines: true,
+      complete: function(results) {
+        const startIdx = results.data.findIndex(row => row.some(c => c && c.toString().includes('Date')));
+        const rows = results.data.slice(startIdx + 1);
+        elecData = rows.map(row => {
+          const raw = row[0]?.trim();
+          if (!raw) return null;
+          const parts = raw.split('-');
+          if (parts.length < 3) return null;
+          const d = new Date(parts[2], parts[1] - 1, parts[0]);
+          const kwh = parseFloat((row[2] || row[1] || '0').replace(',', '.')) || 0;
+          return {
+            dStr: raw,
+            mY: d.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }),
+            kwh
+          };
+        }).filter(Boolean);
+
+        localStorage.setItem('ecostats_elec', JSON.stringify(elecData));
+        localStorage.setItem('ecostats_elec_meta', JSON.stringify({ name: file.name }));
+        document.getElementById('elecDropZone').classList.add('hidden');
+        showElecSavedBadge();
+        initElecFilter();
+        updateElec();
+      }
+    });
+  }
+
+  function initElecFilter() {
+    const months = [...new Set(elecData.map(d => d.mY))];
+    elecMonthFilter.innerHTML = '<option value="all">Global</option>';
+    months.forEach(m => elecMonthFilter.innerHTML += `<option value="${m}">${m}</option>`);
+    document.getElementById('resetBtn').classList.remove('hidden');
+  }
+
+  function updateElec() {
+    if (!elecData.length) return;
+    const sel = elecMonthFilter.value;
+    const price = parseFloat(elecPriceInput.value) || 0.2059;
+    const filtered = sel === 'all' ? elecData : elecData.filter(d => d.mY === sel);
+
+    const totalKwh = filtered.reduce((s, d) => s + d.kwh, 0);
+    const totalCost = totalKwh * price;
+    const avgDay = filtered.length ? totalCost / filtered.length : 0;
+    const avgKwh = filtered.length ? totalKwh / filtered.length : 0;
+    const realRate = totalKwh > 0 ? totalCost / totalKwh : 0;
+
+    document.getElementById('elecDropZone').classList.add('hidden');
+    document.getElementById('elecDashboard').classList.remove('hidden');
+    document.getElementById('elecTotalCost').textContent = totalCost.toFixed(2);
+    document.getElementById('elecTotalKwh').textContent = Math.round(totalKwh).toLocaleString('fr-FR');
+    document.getElementById('elecAvgDay').textContent = avgDay.toFixed(2);
+    document.getElementById('elecAvgKwh').textContent = avgKwh.toFixed(1);
+    document.getElementById('elecRealRate').textContent = realRate.toFixed(4);
+    document.getElementById('elecPeriodInfo').textContent = `${filtered.length} jours · du ${filtered[0]?.dStr} au ${filtered[filtered.length-1]?.dStr}`;
+    // Summaries accordéons
+    document.getElementById('acc-elec-stats-summary').textContent = `${totalCost.toFixed(2)} € · ${Math.round(totalKwh).toLocaleString('fr-FR')} kWh`;
+    document.getElementById('acc-elec-history-summary').textContent = `${filtered.length} jours`;
+
+    renderElecTable(filtered, price);
+    renderElecChart(filtered);
+    renderElecFilterBar(sel);
+  }
+
+  function renderElecFilterBar(selected) {
+    const bar = document.getElementById('elecFilterBar');
+    const months = [...new Set(elecData.map(d => d.mY))];
+    bar.classList.remove('hidden');
+    bar.innerHTML = ['all', ...months].map(m => {
+      const label = m === 'all' ? 'Global' : m;
+      const cls = m === selected ? 'filter-chip active-elec' : 'filter-chip';
+      return `<button class="${cls}" onclick="elecMonthFilterSet('${m}')">${label}</button>`;
+    }).join('');
+  }
+
+  function elecMonthFilterSet(v) {
+    document.getElementById('elecMonthFilter').value = v;
+    updateElec();
+  }
+
+  function renderElecTable(data, price) {
+    document.getElementById('elecTableBody').innerHTML = [...data].reverse().map(d => `
+      <tr>
+        <td class="td-date">${d.dStr}</td>
+        <td class="td-val elec-accent">${d.kwh.toFixed(1)} <span style="font-size:0.65rem;opacity:.5">kWh</span></td>
+        <td class="td-cost elec-accent">${(d.kwh * price).toFixed(2)} €</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderElecChart(data) {
+    const ctx = document.getElementById('elecChart').getContext('2d');
+    if (elecChart) elecChart.destroy();
+    elecChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: data.map(d => d.dStr),
+        datasets: [{
+          data: data.map(d => d.kwh),
+          borderColor: '#f0c040',
+          borderWidth: 2,
+          fill: true,
+          backgroundColor: ctx => {
+            const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+            g.addColorStop(0, 'rgba(240,192,64,0.18)');
+            g.addColorStop(1, 'rgba(240,192,64,0)');
+            return g;
+          },
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: '#f0c040'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: '#18181f',
+          borderColor: 'rgba(240,192,64,0.3)',
+          borderWidth: 1,
+          titleColor: '#f0c040',
+          bodyColor: 'rgba(240,240,245,0.7)',
+          callbacks: {
+            label: ctx => `${ctx.parsed.y.toFixed(1)} kWh`
+          }
+        }},
+        scales: {
+          y: { display: false },
+          x: { ticks: { display: false }, grid: { display: false }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  // ══ PASSAGES À DREUX ══
+  let visits = JSON.parse(localStorage.getItem('ecostats_visits')) || [];
+  let photoBefore = { b64: null, date: null };
+  let photoAfter  = { b64: null, date: null };
+
+  function getRateM3() {
+    const total = parseFloat(document.getElementById('waterTotalBill').value) || 445.72;
+    const m3 = parseFloat(document.getElementById('waterM3Input').value) || 60;
+    return m3 > 0 ? total / m3 : 7.43;
+  }
+
+  // ── Lecture EXIF date depuis les bytes JPEG ──
+  function extractExifDate(arrayBuffer) {
+    try {
+      const view = new DataView(arrayBuffer);
+      if (view.getUint16(0) !== 0xFFD8) return null;
+      let offset = 2;
+      while (offset < view.byteLength - 4) {
+        const marker = view.getUint16(offset);
+        const len = view.getUint16(offset + 2);
+        if (marker === 0xFFE1) { // APP1 = EXIF
+          const exifStr = String.fromCharCode(...new Uint8Array(arrayBuffer, offset + 4, Math.min(len, 4096)));
+          const match = exifStr.match(/(\d{4}):(\d{2}):(\d{2}) (\d{2}):(\d{2}):(\d{2})/);
+          if (match) return `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}:${match[6]}`;
+        }
+        if ((marker & 0xFF00) !== 0xFF00) break;
+        offset += 2 + len;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function handlePhoto(input, type) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const b64 = e.target.result; // data URL
+      // Lire EXIF depuis ArrayBuffer séparé
+      const abReader = new FileReader();
+      abReader.onload = ae => {
+        const exifDate = extractExifDate(ae.target.result);
+        const dateLabel = exifDate || new Date(file.lastModified).toLocaleString('fr-FR');
+        if (type === 'before') {
+          photoBefore = { b64, date: dateLabel };
+          document.getElementById('photoBefore_img').src = b64;
+          document.getElementById('photoBefore_preview').style.display = 'block';
+          document.getElementById('photoBefore_placeholder').style.display = 'none';
+          document.getElementById('photoBefore_meta').textContent = '📅 ' + dateLabel;
+          document.getElementById('photoBefore_meta').style.display = 'block';
+        } else {
+          photoAfter = { b64, date: dateLabel };
+          document.getElementById('photoAfter_img').src = b64;
+          document.getElementById('photoAfter_preview').style.display = 'block';
+          document.getElementById('photoAfter_placeholder').style.display = 'none';
+          document.getElementById('photoAfter_meta').textContent = '📅 ' + dateLabel;
+          document.getElementById('photoAfter_meta').style.display = 'block';
+        }
+      };
+      abReader.readAsArrayBuffer(file);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function addVisit() {
+    const name = document.getElementById('visitName').value.trim();
+    const date = document.getElementById('visitDate').value;
+    const m3 = parseFloat(document.getElementById('visitM3').value);
+    const note = document.getElementById('visitNote').value.trim();
+    if (!name || !date || isNaN(m3) || m3 <= 0) {
+      if (!name) document.getElementById('visitName').style.borderBottom = '1px solid var(--red)';
+      if (!date || isNaN(m3) || m3 <= 0) {
+        document.getElementById('visitDate').style.borderBottom = '1px solid var(--red)';
+        document.getElementById('visitM3').style.color = 'var(--red)';
+      }
+      setTimeout(() => {
+        document.getElementById('visitName').style.borderBottom = '';
+        document.getElementById('visitDate').style.borderBottom = '';
+        document.getElementById('visitM3').style.color = 'var(--water)';
+      }, 800);
+      return;
+    }
+    visits.push({
+      id: Date.now(), name, date, m3, note,
+      photoBefore: { ...photoBefore },
+      photoAfter:  { ...photoAfter }
+    });
+    visits.sort((a, b) => b.date.localeCompare(a.date));
+    localStorage.setItem('ecostats_visits', JSON.stringify(visits));
+    // Reset form
+    document.getElementById('visitM3').value = '';
+    document.getElementById('visitNote').value = '';
+    photoBefore = { b64: null, date: null };
+    photoAfter  = { b64: null, date: null };
+    ['Before','After'].forEach(t => {
+      document.getElementById(`photo${t}_img`).src = '';
+      document.getElementById(`photo${t}_preview`).style.display = 'none';
+      document.getElementById(`photo${t}_placeholder`).style.display = 'flex';
+      document.getElementById(`photo${t}_meta`).style.display = 'none';
+      document.getElementById(`photo${t}`).value = '';
+    });
+    renderVisits();
+  }
+
+  function deleteVisit(id) {
+    visits = visits.filter(v => v.id !== id);
+    localStorage.setItem('ecostats_visits', JSON.stringify(visits));
+    renderVisits();
+  }
+
+  function renderVisits() {
+    const rate = getRateM3();
+    const totalDue = visits.reduce((s, v) => s + v.m3 * rate, 0);
+    const totalM3  = visits.reduce((s, v) => s + v.m3, 0);
+
+    document.getElementById('visitTotalDue').textContent = totalDue.toFixed(2).replace('.', ',');
+    document.getElementById('visitSummaryDetail').textContent =
+      visits.length > 0
+        ? `${visits.length} passage${visits.length > 1 ? 's' : ''} · ${totalM3.toFixed(1)} m³ · ${rate.toFixed(2)} €/m³`
+        : 'Aucun passage enregistré';
+    // Summary accordéon
+    const accSummary = document.getElementById('acc-visits-summary');
+    if (accSummary) accSummary.textContent = visits.length > 0
+      ? `${visits.length} passage${visits.length > 1 ? 's' : ''} · ${totalDue.toFixed(2)} €`
+      : 'Aucun passage';
+
+    const list = document.getElementById('visitList');
+    document.getElementById('exportPdfWrap').classList.toggle('hidden', visits.length === 0);
+    if (visits.length === 0) {
+      list.innerHTML = `<div style="text-align:center;padding:1.5rem 0;font-size:0.75rem;color:var(--text-muted);">Aucun passage enregistré</div>`;
+      return;
+    }
+
+    list.innerHTML = visits.map(v => {
+      const cost  = (v.m3 * rate).toFixed(2);
+      const label = new Date(v.date).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+      const hasBefore = v.photoBefore?.b64;
+      const hasAfter  = v.photoAfter?.b64;
+      const photoIcons = (hasBefore || hasAfter)
+        ? `<span style="font-size:0.65rem;color:var(--water);opacity:0.8;">${hasBefore ? '📷arrivée' : ''}${hasBefore && hasAfter ? ' · ' : ''}${hasAfter ? '📷départ' : ''}</span>`
+        : '';
+      return `
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:0.85rem;padding:0.75rem 0.9rem;">
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--water);flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div style="font-size:0.78rem;font-weight:700;">${v.name} · ${label}${v.note ? ` <span style="font-weight:400;color:var(--text-muted);font-size:0.72rem;">· ${v.note}</span>` : ''}</div>
+              <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-muted);margin-top:1px;">${v.m3} m³ ${photoIcons}</div>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:1rem;font-weight:500;color:var(--water);">${cost} €</div>
+            <button onclick="deleteVisit(${v.id})" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;padding:0 0 0 0.25rem;line-height:1;" title="Supprimer">×</button>
+          </div>
+          ${(hasBefore || hasAfter) ? `
+          <div style="display:grid;grid-template-columns:${hasBefore && hasAfter ? '1fr 1fr' : '1fr'};gap:0.4rem;margin-top:0.6rem;">
+            ${hasBefore ? `<div style="position:relative;"><img src="${v.photoBefore.b64}" style="width:100%;border-radius:0.5rem;max-height:80px;object-fit:cover;"><div style="position:absolute;bottom:3px;left:4px;font-size:0.55rem;background:rgba(0,0,0,0.6);color:white;padding:1px 4px;border-radius:3px;">Arrivée · ${v.photoBefore.date||''}</div></div>` : ''}
+            ${hasAfter  ? `<div style="position:relative;"><img src="${v.photoAfter.b64}" style="width:100%;border-radius:0.5rem;max-height:80px;object-fit:cover;"><div style="position:absolute;bottom:3px;left:4px;font-size:0.55rem;background:rgba(0,0,0,0.6);color:white;padding:1px 4px;border-radius:3px;">Départ · ${v.photoAfter.date||''}</div></div>` : ''}
+          </div>` : ''}
+        </div>`;
+    }).join('');
+  }
+
+  function exportPDF() {
+    const rate = getRateM3();
+    const totalDue = visits.reduce((s, v) => s + v.m3 * rate, 0);
+    const totalM3 = visits.reduce((s, v) => s + v.m3, 0);
+    const today = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+
+    const rowsHTML = visits.map((v, i) => {
+      const d = new Date(v.date).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' });
+      const cost = (v.m3 * rate).toFixed(2);
+      return `
+        <tr style="border-bottom:1px solid #e5e7eb;">
+          <td style="padding:10px 12px;font-size:13px;color:#374151;">${i+1}</td>
+          <td style="padding:10px 12px;font-size:13px;font-weight:600;">${d}</td>
+          <td style="padding:10px 12px;font-size:13px;font-weight:600;color:#0369a1;">${v.name}</td>
+          <td style="padding:10px 12px;font-size:13px;color:#374151;">${v.note || '—'}</td>
+          <td style="padding:10px 12px;font-size:13px;text-align:right;font-family:monospace;">${v.m3} m³</td>
+          <td style="padding:10px 12px;font-size:13px;text-align:right;font-family:monospace;font-weight:700;color:#0369a1;">${cost} €</td>
+        </tr>`;
+    }).join('');
+
+    // Section photos par passage
+    const photosHTML = visits.filter(v => v.photoBefore?.b64 || v.photoAfter?.b64).map((v, i) => {
+      const label = new Date(v.date).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+      const cols = v.photoBefore?.b64 && v.photoAfter?.b64 ? '1fr 1fr' : '1fr';
+      return `
+        <div style="margin-bottom:24px;break-inside:avoid;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6b7280;margin-bottom:10px;">
+            Relevé compteur — ${v.name} · ${label}${v.note ? ' · '+v.note : ''}
+          </div>
+          <div style="display:grid;grid-template-columns:${cols};gap:12px;">
+            ${v.photoBefore?.b64 ? `
+            <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+              <div style="background:#f0f9ff;padding:6px 10px;font-size:10px;font-weight:700;color:#0369a1;border-bottom:1px solid #e5e7eb;">
+                📷 ARRIVÉE${v.photoBefore.date ? ' · ' + v.photoBefore.date : ''}
+              </div>
+              <img src="${v.photoBefore.b64}" style="width:100%;max-height:220px;object-fit:cover;display:block;">
+            </div>` : ''}
+            ${v.photoAfter?.b64 ? `
+            <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+              <div style="background:#f0fdf4;padding:6px 10px;font-size:10px;font-weight:700;color:#16a34a;border-bottom:1px solid #e5e7eb;">
+                📷 DÉPART${v.photoAfter.date ? ' · ' + v.photoAfter.date : ''}
+              </div>
+              <img src="${v.photoAfter.b64}" style="width:100%;max-height:220px;object-fit:cover;display:block;">
+            </div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    const photosSection = photosHTML ? `
+      <div style="margin-bottom:28px;">
+        <div style="font-size:13px;font-weight:700;color:#111;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #e5e7eb;">
+          📸 Justificatifs photographiques — Compteur I23IA130770
+        </div>
+        ${photosHTML}
+      </div>` : '';
+
+    // Injection dans un iframe caché pour éviter le blocage des popups
+    let iframe = document.getElementById('pdfIframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'pdfIframe';
+      iframe.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9999;background:white;';
+      document.body.appendChild(iframe);
+    }
+    iframe.style.display = 'block';
+
+    const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iDoc.open();
+    iDoc.write(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Note de remboursement eau - ${today}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: white; color: #111; padding: 48px; max-width: 760px; margin: 0 auto; }
+    @media print {
+      body { padding: 24px; }
+      .no-print { display: none; }
+      @page { margin: 20mm; }
+    }
+    .btn-print { background: #0369a1; color: white; border: none; padding: 10px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; margin-right: 8px; }
+    .btn-print:hover { background: #0284c7; }
+    .btn-close { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; }
+    .btn-close:hover { background: #e5e7eb; }
+    .doc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 3px solid #0369a1; }
+    .doc-title { font-size: 22px; font-weight: 800; color: #0369a1; letter-spacing: -0.02em; }
+    .doc-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+    .doc-meta { text-align: right; font-size: 12px; color: #6b7280; line-height: 1.8; }
+    .doc-meta strong { color: #111; }
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+    .party-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; }
+    .party-role { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9ca3af; margin-bottom: 6px; }
+    .party-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .party-info { font-size: 12px; color: #6b7280; line-height: 1.6; }
+    .objet { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 28px; font-size: 13px; color: #1e40af; font-weight: 500; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    thead tr { background: #0369a1; color: white; }
+    thead td { padding: 10px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    .totaux { background: #f0f9ff; border: 2px solid #0369a1; border-radius: 10px; padding: 18px 20px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; }
+    .totaux-left { font-size: 13px; color: #374151; }
+    .totaux-left strong { display: block; font-size: 15px; color: #111; margin-bottom: 2px; }
+    .totaux-right { font-size: 32px; font-weight: 800; color: #0369a1; font-family: monospace; }
+    .totaux-unit { font-size: 16px; font-weight: 400; opacity: 0.6; }
+    .base { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 32px; font-size: 11.5px; color: #6b7280; line-height: 1.7; }
+    .base strong { color: #374151; }
+    .footer { border-top: 1px solid #e5e7eb; padding-top: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .footer-note { font-size: 11px; color: #9ca3af; max-width: 340px; line-height: 1.6; }
+    .signature { text-align: right; }
+    .signature-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 40px; }
+    .signature-line { border-bottom: 1px solid #374151; width: 180px; margin-left: auto; }
+    .signature-name { font-size: 11px; color: #374151; margin-top: 6px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:24px;">
+    <button class="btn-print" id="btnPrint">🖨️ Imprimer / Enregistrer en PDF</button>
+    <button class="btn-close" onclick="parent.document.getElementById('pdfIframe').style.display='none'">✕ Fermer</button>
+  </div>
+
+  <div class="doc-header">
+    <div>
+      <div class="doc-title">💧 Note de remboursement eau</div>
+      <div class="doc-sub">Maison secondaire · 16 rue Louis Fauvel, 28100 Dreux</div>
+    </div>
+    <div class="doc-meta">
+      <div>Émis le <strong>${today}</strong></div>
+      <div>Réf. facture : <strong>11755OC</strong></div>
+      <div>Fournisseur : <strong>OCYCLAD Centre</strong></div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party-box">
+      <div class="party-role">Créancier (à recevoir)</div>
+      <div class="party-name">Carlos Justo Tiago</div>
+      <div class="party-info">
+        Résidence principale : 42 rue Raspail, 92300 Levallois-Perret<br>
+        Maison secondaire : 16 rue Louis Fauvel, 28100 Dreux<br>
+        Titulaire contrat OCYCLAD n° 286752
+      </div>
+    </div>
+    <div class="party-box">
+      <div class="party-role">Débiteurs (à payer)</div>
+      <div class="party-name">Visiteurs listés ci-dessous</div>
+      <div class="party-info">
+        ${[...new Set(visits.map(v => v.name))].join(', ')}<br>
+        Consommation eau lors de passages<br>
+        à la maison secondaire de Dreux
+      </div>
+    </div>
+  </div>
+
+  <div class="objet">
+    📋 <strong>Objet :</strong> Remboursement de la consommation d'eau personnelle lors de passages à la maison secondaire de Carlos Justo Tiago, calculé sur la base du coût réel TTC de la facture OCYCLAD n° 11755OC (eau froide + assainissement + redevances + TVA).
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <td>#</td>
+        <td>Date</td>
+        <td>Visiteur</td>
+        <td>Motif</td>
+        <td style="text-align:right">m³</td>
+        <td style="text-align:right">Montant dû</td>
+      </tr>
+    </thead>
+    <tbody>
+      ${rowsHTML}
+      <tr style="background:#f3f4f6;font-weight:700;">
+        <td colspan="4" style="padding:10px 12px;font-size:13px;">TOTAL</td>
+        <td style="padding:10px 12px;font-size:13px;text-align:right;font-family:monospace;">${totalM3.toFixed(1)} m³</td>
+        <td style="padding:10px 12px;font-size:13px;text-align:right;font-family:monospace;color:#0369a1;">${totalDue.toFixed(2)} €</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totaux">
+    <div class="totaux-left">
+      <strong>Montant total à rembourser</strong>
+      ${visits.length} passage${visits.length > 1 ? 's' : ''} · ${totalM3.toFixed(1)} m³ consommés
+    </div>
+    <div class="totaux-right">${totalDue.toFixed(2)} <span class="totaux-unit">€</span></div>
+  </div>
+
+  <div class="base">
+    <strong>Base de calcul :</strong> Facture OCYCLAD n° 11755OC · Période du 10/07/2025 au 11/03/2026 (244 jours) · 60 m³ consommés · Total TTC payé : 445,72 €<br>
+    → Coût réel par m³ = 445,72 € ÷ 60 m³ = <strong>${rate.toFixed(4)} €/m³</strong>
+  </div>
+
+  ${photosSection}
+
+  <div class="footer">
+    <div class="footer-note">
+      Document généré depuis EcoStats le ${today}.<br>
+      Basé sur la facture officielle OCYCLAD Centre · SIRET 200 040 277 00044.<br>
+      À conserver à titre de justificatif de remboursement.
+    </div>
+    <div class="signature">
+      <div class="signature-label">Signature du créancier</div>
+      <div class="signature-line"></div>
+      <div class="signature-name">Carlos Justo Tiago</div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('btnPrint').addEventListener('click', function() {
+      window.print();
+    });
+  <\/script>
+</body>
+</html>`);
+    iDoc.close();
+  }
+
+  // ══ WATER ══
+  function updateWater() {
+    const total = parseFloat(document.getElementById('waterTotalBill').value) || 445.72;
+    const m3 = parseFloat(document.getElementById('waterM3Input').value) || 0;
+    const days = parseFloat(document.getElementById('waterDaysInput').value) || 1;
+
+    const realM3 = m3 > 0 ? total / m3 : 0;
+    const costDay = total / days;
+    const m3Day = m3 / days;
+    const m3Month = m3Day * 30;
+
+    document.getElementById('waterTotalCost').textContent = total.toFixed(2);
+    document.getElementById('waterRealM3').textContent = realM3.toFixed(2);
+    document.getElementById('waterM3RateDisplay').textContent = realM3.toFixed(2) + ' €/m³';
+    document.getElementById('waterCostDay').textContent = costDay.toFixed(2);
+    document.getElementById('waterM3Day').textContent = m3Day.toFixed(3);
+    document.getElementById('waterM3Month').textContent = m3Month.toFixed(2);
+    document.getElementById('waterPeriodInfo').textContent = `${days} jours · ${m3} m³ consommés`;
+    document.getElementById('acc-water-stats-summary').textContent = `${total.toFixed(2)} € · ${realM3.toFixed(2)} €/m³`;
+    renderVisits();
+  }
+
+  // ══ INIT ══
+  window.onload = () => {
+    document.getElementById('visitDate').value = new Date().toISOString().split('T')[0];
+    updateWater();
+    renderVisits();
+    if (elecData.length > 0) {
+      document.getElementById('elecDropZone').classList.add('hidden');
+      showElecSavedBadge();
+      initElecFilter();
+      updateElec();
+    }
+  };
+</script>
+</body>
+</html>
